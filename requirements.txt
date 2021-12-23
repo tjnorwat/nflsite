@@ -1,0 +1,10 @@
+flask
+Flask-SQLAlchemy
+flask-bcrypt
+flas-login
+pillow
+flask-wtf
+email-validator
+selenium
+bs4
+lxml
