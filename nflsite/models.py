@@ -44,7 +44,7 @@ class TeamWinner(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     match_id = db.Column(db.Integer, db.ForeignKey('team_match.id'), nullable=False)
     scores = db.Column(db.String(10), nullable=False)
-    winner = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
+    winner = db.Column(db.Integer, db.ForeignKey('team.id'))
 
 
 class UserPick(db.Model):

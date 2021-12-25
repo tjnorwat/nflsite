@@ -1,0 +1,40 @@
+{% extends "layout.html" %} {% block content %}
+<h1>Picks Page</h1>
+<h2>{{ matches['season'].year}} - {{ matches['season'].week }}</h2>
+<form method="POST" action="">
+    {% for match in matches['data'] %}
+    <div>
+        <h4> Game {{ loop.index }}</h4>
+
+            <img src="{{ url_for('static', filename=match.team1_image) }}" width="50" height="50">
+            {% if match.user_pick %} 
+                {% if match.user_pick == match.team1_id %}
+                <label>
+                    <input type="radio" name="matchid_{{ match.match_id }}" value="{{ match.team1_id }}" checked> {{ match.team1_name }}
+                </label>
+                <label>
+                    <input type="radio" name="matchid_{{ match.match_id }}" value="{{ match.team2_id }}"> {{ match.team2_name }} 
+                </label>
+                {% else %}
+                <label>
+                    <input type="radio" name="matchid_{{ match.match_id }}" value="{{ match.team1_id }}"> {{ match.team1_name }}
+                </label>
+                <label>
+                    <input type="radio" name="matchid_{{ match.match_id }}" value="{{ match.team2_id }}" checked> {{ match.team2_name }} 
+                </label>
+                {% endif %} 
+            {% else %}
+            <label>
+                <input type="radio" name="matchid_{{ match.match_id }}" value="{{ match.team1_id }}"> {{ match.team1_name }}
+            </label>
+            <label>
+                <input type="radio" name="matchid_{{ match.match_id }}" value="{{ match.team2_id }}"> {{ match.team2_name }} 
+            </label>
+            {% endif %}
+            <img src="{{ url_for('static', filename=match.team2_image) }}" width="50" height="50">
+
+    </div>
+    {% endfor %}
+    <input type="submit">
+</form>
+{% endblock content %}

@@ -7,7 +7,7 @@ from nflsite import db
 from nflsite.models import *
 
 
-url = 'https://www.nfl.com/schedules/2021/REG15/'
+url = 'https://www.nfl.com/schedules'
 
 
 def getSource():
@@ -24,36 +24,23 @@ def getSource():
 
     driver.quit()
 
+
 def getData():
     data = dict()
 
-    with open('nflsite/week15_before.html') as f:
+    with open('nflsite/out.html') as f:
         soup = BeautifulSoup(f.read(), 'lxml')
     
     year_title = soup.find('h2', class_='nfl-c-content-header__roofline').getText()
 
     year = int(year_title.split()[0])
+    data['year'] = year
 
     week = year_title.split()[2:]
     week = ' '.join(week)
     data['week'] = week
 
     games_list = list()
-
-    # keep track of season/week (for picks route)
-    curr_season = CurrentSeason.query.get(1)
-    # first time setting up
-    if not curr_season:
-        curr_season = CurrentSeason(year=year, week=week)
-        db.session.add(curr_season)
-        db.session.commit()
-
-    elif curr_season.week != week:
-        # check to see if we need to update the season
-        curr_season.year = year
-        curr_season.week = week
-        db.session.commit()
-
 
     sections = soup.find_all('section', class_='d3-l-grid--outer d3-l-section-row nfl-o-matchup-group')
     for section in sections:
@@ -113,8 +100,25 @@ def getData():
 def dataToDB():
     data = getData()
     bulk = list()
-
+    
+    year = data['year']
     week = data['week']
+
+    # keep track of season/week (for picks route)
+    curr_season = CurrentSeason.query.get(1)
+    # first time setting up
+    if not curr_season:
+        curr_season = CurrentSeason(year=year, week=week)
+        db.session.add(curr_season)
+        db.session.commit()
+
+    elif curr_season.week != week:
+        # check to see if we need to update the season
+        curr_season.year = year
+        curr_season.week = week
+        db.session.commit()
+
+    game_over_ids = list()
     for game in data['games']:
 
         team1_id = Team.query.filter_by(name=game['teams'][0]).first().id
@@ -123,20 +127,24 @@ def dataToDB():
 
         # if the game is over add it to team winner
         if game['over']:
-            
             # lookup game in team match for id 
             match_id = TeamMatch.query.filter(db.extract('year', TeamMatch.date) == date.year, 
                                               db.extract('month', TeamMatch.date) == date.month, 
                                               db.extract('day', TeamMatch.date) == date.day, 
-                                              TeamMatch.team1_id==team1_id,
-                                              TeamMatch.team2_id==team2_id).first()
+                                              TeamMatch.team1_id == team1_id,
+                                              TeamMatch.team2_id == team2_id).first()
 
+            # do i need this ? 
             if match_id:
                 match_id = match_id.id
             else:
                 # no match found, skip
                 continue
+            
+            # using this for user record later down script
+            game_over_ids.append(match_id)
 
+            # add to team winner 
             # check to see if game is already in db
             if not TeamWinner.query.filter_by(match_id=match_id).first():
                 # add the scores 
@@ -149,15 +157,71 @@ def dataToDB():
                     winner = team2_id
                 else:
                     # in case of tie ?
-                    winner = team1_id
+                    winner = None
 
                 bulk.append(TeamWinner(match_id=match_id, scores=scores, winner=winner))
 
+            # add to team record 
+            # check to see if first team is already in db 
+            if not TeamRecord.query.filter_by(team_id=team1_id, year=year, week=week).first():
+                bulk.append(TeamRecord(team_id=team1_id, year=year, week=week, record=game['records'][0]))
+
+            # check to see if second is team is already in db 
+            if not TeamRecord.query.filter_by(team_id=team2_id, year=year, week=week).first():
+                bulk.append(TeamRecord(team_id=team2_id, year=year, week=week, record=game['records'][1]))
+
         # add to team match
         else:
+            
             # check to see if game is already in db 
             if not TeamMatch.query.filter_by(team1_id=team1_id, team2_id=team2_id, date=date).first():
+                
                 bulk.append(TeamMatch(team1_id=team1_id, team2_id=team2_id, date=date, week=week))
+
+    db.session.bulk_save_objects(bulk)
+    db.session.commit()
+
+    updateUserRecord(data, game_over_ids)
+
+
+def updateUserRecord(data, game_over_ids):
+    bulk = list()
+    users = User.query.all()
+    for user in users:
+        # get current users record 
+
+        curr_season = CurrentSeason.query.get(1)
+        user_record = UserRecord.query.filter_by(user_id=user.id, year=curr_season.year, week=curr_season.week).first()
+
+        wins = 0
+        losses = 0
+        ties = 0
+
+        for match_id in game_over_ids:
+            user_pick = UserPick.query.filter_by(user_id=user.id, match_id=match_id).first()
+            if user_pick:
+                team_winner = TeamWinner.query.filter_by(match_id=match_id).first()
+
+                if user_pick.team_id == team_winner.winner:
+                    wins += 1
+                # see if winner is not null (null means tie)
+                elif team_winner.winner:
+                    losses += 1
+                else:
+                    ties += 1
+        
+        # putting record back together to store
+        if ties:
+            new_record = f'({wins}-{losses}-{ties})'
+        else:
+            new_record = f'({wins}-{losses})'
+
+        # check to see if we need to udpate record
+        if user_record:
+            if new_record != user_record.record:
+                user_record.record = new_record
+        else:
+            bulk.append(UserRecord(user_id=user.id, year=curr_season.year, week=curr_season.week, record=new_record))
 
     db.session.bulk_save_objects(bulk)
     db.session.commit()

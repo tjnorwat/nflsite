@@ -99,15 +99,39 @@ def picks():
     matches = TeamMatch.query.filter(db.extract('year', TeamMatch.date) == curr_season.year, 
                                      TeamMatch.week == curr_season.week).all()
 
-    match_data = [ {'team1_name' :  Team.query.get(match.team1_id).name,
-            'team1_id' : match.team1_id,
-            'team2_name' : Team.query.get(match.team2_id).name,
-            'team2_id' : match.team2_id,
-            'match_id' : match.id}
-            for match in matches
-        ]
+    if request.method == 'GET':
+        
+        match_data = {'season' : curr_season}
+        data_list = list()
+        for match in matches:
+            team1 = Team.query.get(match.team1_id)
+            team2 = Team.query.get(match.team2_id)
 
-    if request.method == 'POST':
+            # add if game is over or not , datetime 
+            d_dict = {
+                'team1_id' : team1.id,
+                'team1_name' : team1.name,
+                'team1_image' : 'team_logo/' + team1.image_file,
+                'team2_id' : team2.id,
+                'team2_name' : team2.name,
+                'team2_image' : 'team_logo/' + team2.image_file,
+                'match_id' : match.id,
+                'match_date' : match.date                
+            }
+
+            user_pick = UserPick.query.filter_by(user_id=current_user.id, match_id=match.id).first()
+            # if the user has already picked their team, show them 
+            if user_pick:
+                d_dict['user_pick'] = user_pick.team_id
+            else:
+                d_dict['user_pick'] = None
+
+            data_list.append(d_dict)
+        
+        match_data['data'] = data_list
+        return render_template('picks.jinja', matches=match_data)
+
+    elif request.method == 'POST':
         # print(request.values)
 
         bulk = list()
@@ -122,7 +146,9 @@ def picks():
                 # if user has already picked a match, update it
                 has_picked = UserPick.query.filter_by(user_id=user_id, match_id=match_id).first()
                 if has_picked:
-                    has_picked.team_id = team_id
+                    # if user has changed their pick, update it
+                    if has_picked.team_id != team_id: 
+                        has_picked.team_id = team_id
                 else:
                     bulk.append(UserPick(user_id=user_id, team_id=team_id, match_id=match_id))
 
@@ -131,8 +157,6 @@ def picks():
 
         flash('Your picks have been saved!', 'success')
         return redirect(url_for('picks'))
-
-    return render_template('picks.html', matches=match_data)
 
 
 @app.route('/test_db', methods=['GET'])
