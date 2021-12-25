@@ -1,7 +1,7 @@
 flask
 Flask-SQLAlchemy
 flask-bcrypt
-flas-login
+flask-login
 pillow
 flask-wtf
 email-validator
