@@ -1,27 +1,15 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 from datetime import datetime
-from webdriver_manager.chrome import ChromeDriverManager
 from nflsite import db
 from nflsite.models import *
-
+from requests_html import HTMLSession
 
 def getSource():
-    chrome_options = Options()
-    chrome_options.add_argument('--log-level=3')
-    chrome_options.add_argument('--headless')
+    session = HTMLSession()
+    r = session.get('https://www.nfl.com/schedules/')
 
-    url = 'https://www.nfl.com/schedules'
-    driver = webdriver.Chrome(ChromeDriverManager().install(), options=chrome_options)
-    driver.get(url)
-    source = driver.page_source
-
-    # with open('nflsite/out.html', 'w', encoding='utf-8') as f:
-    #     f.write(source)
-
-    driver.quit()
-    return source
+    r.html.render()
+    return r.html.html
 
 def getData():
     data = dict()
