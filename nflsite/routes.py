@@ -4,11 +4,10 @@ import datetime
 from PIL import Image
 from flask import render_template, url_for, flash, redirect, request
 from nflsite import app, db, bcrypt
-from nflsite.forms import OverviewSeasonYearForm, RegistrationForm, LoginForm, UpdateAccountForm
+from nflsite.forms import RegistrationForm, LoginForm, UpdateAccountForm
 from nflsite.models import User, UserRecord, Team, TeamMatch, TeamWinner, UserPick, TeamRecord, CurrentSeason, AllSeasons
 from flask_login import login_user, current_user, logout_user, login_required
-
-from nflsite.scrape import dataToDB, getSource
+from nflsite.scrape import dataToDB
 
 
 @app.context_processor

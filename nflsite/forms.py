@@ -1,11 +1,9 @@
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileField, FileAllowed
 from flask_login import current_user
-from wtforms import StringField, PasswordField, SubmitField, BooleanField, RadioField, Form, FieldList, FormField
-from wtforms.fields.choices import SelectField
+from wtforms import StringField, PasswordField, SubmitField, BooleanField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
-from nflsite.models import User, AllSeasons
-from nflsite import db
+from nflsite.models import User
 
 
 class RegistrationForm(FlaskForm):
