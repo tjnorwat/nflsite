@@ -9,11 +9,8 @@
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
 
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='main.css') }}"> {% if title %}
-    <title>Flask Blog - {{ title }}</title>
-    {% else %}
-    <title>Flask Blog</title>
-    {% endif %}
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='main.css') }}"> 
+    <title>NFL Picks</title>
 </head>
 
 <body>
@@ -25,18 +22,18 @@
             <span class="navbar-toggler-icon"></span>
           </button>
                 <div class="collapse navbar-collapse" id="navbarToggle">
-                    <div class="navbar-nav mr-auto">
-                        <a class="nav-item nav-link" href="{{ url_for('home') }}">Home</a>
-                        <a class="nav-item nav-link" href="{{ url_for('about') }}">About</a>
-                    </div>
+                    <div class="navbar-nav mr-auto"></div>
                     <!-- Navbar Right Side -->
                     <div class="navbar-nav">
                         {% if current_user.is_authenticated %}
-                        <a class="nav-item nav-link" href="{{ url_for('account') }}">Account</a>
-                        <a class="nav-item nav-link" href="{{ url_for('logout') }}">Logout</a>
-                        <a class="nav-item nav-link" href="{{ url_for('picks') }}">Picks</a> {% else %}
-                        <a class="nav-item nav-link" href="{{ url_for('login') }}">Login</a>
-                        <a class="nav-item nav-link" href="{{ url_for('register') }}">Register</a> {% endif %}
+                            <a class="nav-item nav-link" href="{{ url_for('picks') }}">Picks</a>
+                            <a class="nav-item nav-link" href="{{ url_for('overview') }}">Overview</a>
+                            <a class="nav-item nav-link" href="{{ url_for('account') }}">Account</a>
+                            <a class="nav-item nav-link" href="{{ url_for('logout') }}">Logout</a>
+                        {% else %}
+                            <a class="nav-item nav-link" href="{{ url_for('login') }}">Login</a>
+                            <a class="nav-item nav-link" href="{{ url_for('register') }}">Register</a> 
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -44,21 +41,20 @@
     </header>
     <main role="main" class="container">
         <div class="row">
-            <div class="col-md-8">
+            <div class="col-md-9">
                 {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %} {% for category, message in messages %}
                 <div class="alert alert-{{ category }}">
                     {{ message }}
                 </div>
                 {% endfor %} {% endif %} {% endwith %} {% block content %}{% endblock %}
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="content-section">
-                    <h3>Sidebar</h3>
-                    <p class='text-muted'>Info
+                    <h3>Records</h3>
                         <ul class="list-group">
-                            <li class="list-group-item list-group-item-light">Latest Posts</li>
-                            <li class="list-group-item list-group-item-light">Announcements</li>
-                            <li class="list-group-item list-group-item-light">Calendars</li>
+                            {% for record in user_records.record_list %}
+                                <li class="list-group-item"><strong>{{record.username }}</strong>  {{record.record}}</li>
+                            {% endfor %}
                         </ul>
                     </p>
                 </div>

@@ -9,3 +9,4 @@ selenium
 bs4
 lxml
 waitress
+Flask-APScheduler

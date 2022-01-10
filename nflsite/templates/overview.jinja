@@ -1,0 +1,70 @@
+{% extends "layout.jinja" %} {% block content %} 
+
+<h1>Overview Page</h1>
+<h2> {{ pick_data.season.year }} - {{ pick_data.season.week }}</h2>
+
+<form method="POST" action="">
+<div>
+    <select name="year_select">
+        {% for choice in year_dropdown %}
+            {% if choice == pick_data.season.year %}
+                <option value="{{ choice }}" selected>{{ choice }}</option>
+            {% else %}
+                <option value="{{ choice }}">{{ choice }}</option>
+            {% endif %}
+        {% endfor %}
+    </select>
+    <select name="week_select">
+        {% for choice in week_dropdown %}
+            {% if choice == pick_data.season.week %}
+                <option value="{{ choice }}" selected>{{ choice }}</option>
+            {% else %}
+                <option value="{{ choice }}">{{ choice }}</option>
+            {% endif %}
+        {% endfor %}
+    </select>
+    <input class="btn btn-primary" type="submit"> 
+    </div>
+</form>
+<style>
+    .overview-match {
+        background-color: lightgrey;
+    }
+
+    .sticky-col {
+        position: -webkit-sticky;
+        position: sticky;
+    }
+</style>
+
+<table class="table table-hover table-responsive" style="text-align: center; white-space: nowrap; table-layout: fixed; width: 100%;">
+    <!--table-layout: fixed;-->
+    <thead>
+        <tr>
+            <th class="sticky-col" scope="col" style="min-width: 150px;">Matches</th>
+            {% for users in pick_data.users %}
+                <th class="sticky-col" scope="col" style="min-width: 50px;">{{ users.username }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+
+        {% for match in pick_data.match_data %}
+            <tr>
+                <td class="sticky-col overview-match" scope="row"><img class="rounded-circle" style="width: 50px;" src="{{ url_for('static', filename=match.team1_image) }}"> <strong>@</strong> <img class="rounded-circle" style="width: 50px;" src="{{ url_for('static', filename=match.team2_image) }}"></td>
+                {% for user_pick in match.user_picks %}
+                    {% if user_pick and user_pick.team_id == match.team_winner_id%}
+                        <td><img class="rounded-circle" style="width: 50px; background-color:green;" src="{{ url_for('static', filename=user_pick.team_logo) }}"></td>
+                    {% elif user_pick %}
+                        <td><img class="rounded-circle" style="width: 50px;" src="{{ url_for('static', filename=user_pick.team_logo) }}"></td>
+                    {% else %}
+                        <td>None</td>
+                    {% endif %}
+                {% endfor %}
+            </tr>
+        {% endfor %}
+
+    </tbody>
+</table>
+
+{% endblock content %}

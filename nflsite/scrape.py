@@ -7,29 +7,28 @@ from nflsite import db
 from nflsite.models import *
 
 
-url = 'https://www.nfl.com/schedules'
-
-
 def getSource():
     chrome_options = Options()
     chrome_options.add_argument('--log-level=3')
     chrome_options.add_argument('--headless')
 
+    url = 'https://www.nfl.com/schedules'
     driver = webdriver.Chrome(options=chrome_options)
     driver.get(url)
     source = driver.page_source
 
-    with open('nflsite/out.html', 'w', encoding='utf-8') as f:
-        f.write(source)
+    # with open('nflsite/out.html', 'w', encoding='utf-8') as f:
+    #     f.write(source)
 
     driver.quit()
-
+    return source
 
 def getData():
     data = dict()
 
-    with open('nflsite/out.html') as f:
-        soup = BeautifulSoup(f.read(), 'lxml')
+    # with open('nflsite/out.html') as f:
+    #     soup = BeautifulSoup(f.read(), 'lxml')
+    soup = BeautifulSoup(getSource(), 'lxml')
     
     year_title = soup.find('h2', class_='nfl-c-content-header__roofline').getText()
 
@@ -64,18 +63,23 @@ def getData():
             game_metadata['records'] = records
 
             over = game.find('p', class_='nfl-c-matchup-strip__period')
-            
+            # over can either be FINAL/OT or a LIVE game 
             if over:
                 over = over.getText().strip()
-                scores = game.find_all('div', class_='nfl-c-matchup-strip__team-score')
-                scores = [score['data-score'] for score in scores]
-                scores = f'{scores[0]}-{scores[1]}'
+                if 'FINAL' in over:
+                    scores = game.find_all('div', class_='nfl-c-matchup-strip__team-score')
+                    scores = [score['data-score'] for score in scores]
+                    scores = f'{scores[0]}-{scores[1]}'
 
-                date = datetime(year, month, day)
-                
-                game_metadata['over'] = over
-                game_metadata['scores'] = scores
-            
+                    date = datetime(year, month, day)
+                    
+                    game_metadata['over'] = over
+                    game_metadata['scores'] = scores
+                # game is live
+                else:
+                    date = datetime(year, month, day)
+                    game_metadata['over'] = None
+                    game_metadata['scores'] = None
             else:
                 time = game.find('span', class_='nfl-c-matchup-strip__date-time').getText().strip()
                 # timezone = game.find('span', class_='nfl-c-matchup-strip__date-timezone').getText().strip()
@@ -109,14 +113,19 @@ def dataToDB():
     # first time setting up
     if not curr_season:
         curr_season = CurrentSeason(year=year, week=week)
-        db.session.add(curr_season)
-        db.session.commit()
+        bulk.append(curr_season)
 
     elif curr_season.week != week:
         # check to see if we need to update the season
         curr_season.year = year
         curr_season.week = week
         db.session.commit()
+
+
+    all_season = AllSeasons.query.filter_by(year=year, week=week).first()
+    if not all_season:
+        all_season = AllSeasons(year=year, week=week)
+        bulk.append(all_season)
 
     game_over_ids = list()
     for game in data['games']:
@@ -161,6 +170,7 @@ def dataToDB():
 
                 bulk.append(TeamWinner(match_id=match_id, scores=scores, winner=winner))
 
+        else:
             # add to team record 
             # check to see if first team is already in db 
             if not TeamRecord.query.filter_by(team_id=team1_id, year=year, week=week).first():
@@ -170,9 +180,6 @@ def dataToDB():
             if not TeamRecord.query.filter_by(team_id=team2_id, year=year, week=week).first():
                 bulk.append(TeamRecord(team_id=team2_id, year=year, week=week, record=game['records'][1]))
 
-        # add to team match
-        else:
-            
             # check to see if game is already in db 
             if not TeamMatch.query.filter_by(team1_id=team1_id, team2_id=team2_id, date=date).first():
                 
@@ -181,18 +188,16 @@ def dataToDB():
     db.session.bulk_save_objects(bulk)
     db.session.commit()
 
-    updateUserRecord(data, game_over_ids)
+    # only update user records once all games are finished 
+    if len(game_over_ids) == len(data['games']):
+        updateUserRecord(game_over_ids)
 
 
-def updateUserRecord(data, game_over_ids):
+def updateUserRecord(game_over_ids):
     bulk = list()
     users = User.query.all()
+    curr_season = CurrentSeason.query.get(1)
     for user in users:
-        # get current users record 
-
-        curr_season = CurrentSeason.query.get(1)
-        user_record = UserRecord.query.filter_by(user_id=user.id, year=curr_season.year, week=curr_season.week).first()
-
         wins = 0
         losses = 0
         ties = 0
@@ -210,18 +215,48 @@ def updateUserRecord(data, game_over_ids):
                 else:
                     ties += 1
         
+
+        # assuming that user has not voted yet
+        if wins == 0 and losses == 0 and ties == 0:
+            continue
+        
+        # get last record and add to new record 
+        last_record = UserRecord.query.filter_by(user_id=user.id).order_by(UserRecord.id.desc()).first()
+       
+        if last_record:
+            # making sure a new year hast started yet 
+            if last_record.year == curr_season.year:
+                split_record = last_record.record.remove('(').remove(')').split('-')
+                # seeing if there were any ties 
+                if len(split_record) == 2:
+                    last_wins = split_record[0]
+                    last_losses = split_record[1]
+                    last_ties = 0
+                else:
+                    last_wins = split_record[0]
+                    last_losses = split_record[1]
+                    last_ties = split_record[2]
+
+                wins += last_wins
+                losses += last_losses
+                ties += last_ties
+
         # putting record back together to store
         if ties:
             new_record = f'({wins}-{losses}-{ties})'
         else:
             new_record = f'({wins}-{losses})'
 
+        # i think i can remove this 
         # check to see if we need to udpate record
-        if user_record:
-            if new_record != user_record.record:
-                user_record.record = new_record
-        else:
-            bulk.append(UserRecord(user_id=user.id, year=curr_season.year, week=curr_season.week, record=new_record))
+        # user_record = UserRecord.query.filter_by(user_id=user.id, year=curr_season.year, week=curr_season.week).first()
+        # if user_record:
+        #     if new_record != user_record.record:
+        #         user_record.record = new_record
+        # else:
+        #     bulk.append(UserRecord(user_id=user.id, year=curr_season.year, week=curr_season.week, record=new_record))
+
+        bulk.append(UserRecord(user_id=user.id, year=curr_season.year, week=curr_season.week, record=new_record))
 
     db.session.bulk_save_objects(bulk)
     db.session.commit()
