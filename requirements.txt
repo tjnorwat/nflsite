@@ -5,9 +5,8 @@ flask-login
 pillow
 flask-wtf
 email-validator
-selenium
 bs4
 lxml
 waitress
 Flask-APScheduler
-webdriver-manager
+requests-html
