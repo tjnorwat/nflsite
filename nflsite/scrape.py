@@ -9,7 +9,9 @@ def getSource():
     r = session.get('https://www.nfl.com/schedules/')
 
     r.html.render()
-    return r.html.html
+    source = r.html.html
+    r.close()
+    return source
 
 def getData():
     data = dict()
