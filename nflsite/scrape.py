@@ -215,11 +215,6 @@ def updateUserRecord(game_over_ids):
                 else:
                     ties += 1
         
-
-        # assuming that user has not voted yet
-        if wins == 0 and losses == 0 and ties == 0:
-            continue
-        
         # get last record and add to new record 
         last_record = UserRecord.query.filter_by(user_id=user.id).order_by(UserRecord.id.desc()).first()
        
