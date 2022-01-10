@@ -2,7 +2,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from bs4 import BeautifulSoup
 from datetime import datetime
-
+from webdriver_manager.chrome import ChromeDriverManager
 from nflsite import db
 from nflsite.models import *
 
@@ -13,7 +13,7 @@ def getSource():
     chrome_options.add_argument('--headless')
 
     url = 'https://www.nfl.com/schedules'
-    driver = webdriver.Chrome(options=chrome_options)
+    driver = webdriver.Chrome(ChromeDriverManager().install(), options=chrome_options)
     driver.get(url)
     source = driver.page_source
 
