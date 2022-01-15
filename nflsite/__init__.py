@@ -55,7 +55,7 @@ if not rows:
 from nflsite.scrape import dataToDB
 from nflsite.models import TeamMatch
 
-@scheduler.task('interval', id='db_1', hours=4)
+@scheduler.task('interval', id='db_1', hours=6)
 def scheduleData():
     dataToDB()
 
