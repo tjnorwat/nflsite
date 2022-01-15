@@ -7,7 +7,7 @@
 
         <div class="picks-wrapper col text-center">
             <div class="picks-game alert alert-secondary" role="alert">
-                <h6 class="picks-game-heading alert-heading">{{ match.match_date.strftime('%I:%M %p, %a, %B %d, %Y') }}</h6>
+                <h6 class="picks-game-heading alert-heading">{{ match.match_date.strftime('%I:%M %p,%B %d') }}</h6>
                 <div class="picks-teams row btn-group btn-group-toggle" data-toggle="buttons">
                     <div class="col">
                         {# if game has already started, disable buttons but show who they picked if they did pick someone #}
